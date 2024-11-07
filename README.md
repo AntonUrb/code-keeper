@@ -37,7 +37,7 @@ We make use of Gitlab to store code and automate the development cycle of our se
 
 - Next step is as easy as deploying your ansible playbook by running the command ```ansible-playbook -i inventory.ini install-gitlab.yml --ask-pass --ask-vault-pass --ask-become-pass```
 
-![gitlab install](https://i.imgur.com/a/gitlab-setup-X5e20cz.gif)
+[![gitlab-installer.gif](https://i.postimg.cc/zf7BgThg/gitlab-installer.gif)](https://postimg.cc/yJJsqgv1)
 
 - Now you have successfully installed gitlab! You can now go to the machines public address and try logging in with the "root" account and your personal password that you set. After you have successfully logged in, navigate to your profile settings and generate an access key.
 
@@ -47,7 +47,7 @@ We make use of Gitlab to store code and automate the development cycle of our se
 
 - It's time to set up the groups and repositories, run ```ansible-playbook -i inventory.ini setup-repos.yml --ask-pass --ask-vault-pass --ask-become-pass --skip-tags "create group"``` to make all the repositories.
 
-![gitlab repos](https://i.imgur.com/a/gitlab-repos-VwkBBBg.gif)
+[![Setup-repo.gif](https://i.postimg.cc/R0SC4qYV/Setup-repo.gif)](https://postimg.cc/18d1KRPL)
 
 - Next up, is making sure we have the runners set for each service CI/CD pipeline, we made a chocie to register them manually due to Gitlabs new update on runner registration system.
 
@@ -83,7 +83,7 @@ We make use of Gitlab to store code and automate the development cycle of our se
 
 - Wait for the jobs to finish untill deploy_staging(which has been configured to manual start)
 
-![gitlab-ci](https://i.imgur.com/a/gitlab-ci-Vrm5Ak3.gif)
+[![ci-pipeline.gif](https://i.postimg.cc/TYnWPLtr/ci-pipeline.gif)](https://postimg.cc/vcHmqBFB)
 
 ### Step 3. Setting up the staging Cloud (this is the costly part, proceed at your own risk)
 
