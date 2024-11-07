@@ -1,0 +1,7 @@
+gitlab_personal_access_token: <your gitlab access token>
+gitlab_group_access_token: <your gitlab group access token>
+gitlab_root_password: <The password you want for root account>
+gitlab_external_url: <the url that your gitlab is hosted on>
+gitlab_ci_runner_executor: "docker"
+local_directory: <path to the template folder(preferably absolute path)>
+group_name: <your group name>

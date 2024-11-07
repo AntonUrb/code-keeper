@@ -1,0 +1,10 @@
+secretGenerator:
+- name: cloud-secrets
+  envs:
+  - .env
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    type: generated
+  annotations:
+    note: generated

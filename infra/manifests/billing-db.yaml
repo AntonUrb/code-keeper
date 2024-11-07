@@ -1,0 +1,79 @@
+# must be deployed as StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-db
+spec:
+  selector:
+    app: billing-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: billing-db
+spec:
+  serviceName: "billing-database"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-db
+  template:
+    metadata:
+      labels:
+        app: billing-db
+    spec:
+      containers:
+        - name: billing-db
+          image: triangle123321/cloud-design-db:v1.0
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_UNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_PASSW
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_NAME
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: billing-database
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: billing-database
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 100Mi
+        storageClassName: gp2
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: billing-db-vol
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gp2
+  hostPath:
+    path: /mnt/data/billing
+  claimRef:
+    namespace: default
+    name: billing-database-billing-db-0

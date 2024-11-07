@@ -1,0 +1,98 @@
+# Must be StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-app
+spec:
+  selector:
+    app: billing-app
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: billing-app
+spec:
+  serviceName: "billing-app"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-app
+  template:
+    metadata:
+      labels:
+        app: billing-app
+    spec:
+      initContainers:
+        - name: wait-for-invdb
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z -w 3 inventory-db 5432; do echo waiting for inventory-db; sleep 5; done;",
+            ]
+      containers:
+        - name: billing-app
+          image: triangle123321/cloud-design-billing-app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BILLING_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: BILLING_PORT
+            - name: DB_BILLING_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_NAME
+            - name: DB_BILLING_UNAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_UNAME
+            - name: DB_BILLING_PASSW
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_PASSW
+            - name: DB_BILLING_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_PORT
+            - name: DB_BILLING_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_BILLING_HOST
+            - name: QUEUE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: QUEUE_PORT
+            - name: QUEUE_UNAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: QUEUE_UNAME
+            - name: QUEUE_PASSW
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: QUEUE_PASSW
+            - name: QUEUE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: QUEUE_NAME
+            - name: QUEUE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: QUEUE_HOST

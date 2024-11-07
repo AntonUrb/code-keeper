@@ -1,0 +1,79 @@
+---
+- name: Deploy and Configure GitLab with Multiple Repositories
+  hosts: gitlab_server
+  become: true
+  vars_files:
+    - vars.yml
+  vars:
+    group_path: "{{ group_name }}"
+    repositories:
+      - name: "inventory-app"
+        description: "source code for inventory app"
+      - name: "billing-app"
+        description: "source code for billing app"     
+      - name: "api-gateway"
+        description: "source code for gateway"
+      - name: "infra"
+        description: "aws infra setup"
+
+  tasks:
+    - name: Show environment
+      debug:
+        msg: "{{ ansible_env }}"
+
+    - name: Create gitlab group
+      uri:
+        url: "http://{{ gitlab_external_url }}/api/v4/groups"
+        method: POST
+        headers:
+          PRIVATE-TOKEN: "{{ gitlab_personal_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ { 'name': group_name, 'path': group_path } }}"
+        status_code: 201
+      ignore_errors: yes
+      tags: create-group
+
+    - name: Copy runner templates
+      ansible.builtin.copy:
+        src: "{{ local_directory }}"
+        dest: "/tmp/config_templates"
+        owner: "karlutska"
+        mode: '0755'
+
+    - name: Get group details
+      uri:
+        url: "http://{{ gitlab_external_url }}/api/v4/groups"
+        method: GET
+        headers:
+          PRIVATE-TOKEN: "{{ gitlab_personal_access_token }}"
+        return_content: yes
+      register: group_details
+      tags: skip
+
+    - name: Extract group ID for the specific group
+      set_fact:
+        group_id: "{{ group_details.json | json_query('[?name==`' + group_name + '`].id') | first }}"
+      when: group_details is defined and group_details.json is defined
+
+    - name: Debug group_id to ensure it was found
+      debug:
+        var: group_id
+
+    - name: Create GitLab Projects for Each Repository
+      uri:
+        url: "http://{{ gitlab_external_url }}/api/v4/projects"
+        method: POST
+        headers:
+          PRIVATE-TOKEN: "{{ gitlab_personal_access_token }}"
+        body_format: json
+        body: |
+          {
+            "name": "{{ item.name }}",
+            "description": "{{ item.description }}",
+            "initialize_with_readme": true,
+            "namespace_id": {{ group_id }}
+          }
+        status_code: [200, 201]
+      loop: "{{ repositories }}"
+      when: group_details is defined

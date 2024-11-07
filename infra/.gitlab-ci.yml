@@ -1,0 +1,82 @@
+stages:
+  - init
+  - validate
+  - plan
+  - apply_staging
+  - apply_production
+
+variables:
+  TF_VERSION: "1.9.8"
+  TF_VAR_region: "eu-north-1" # Replace with your region
+  AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+  AWS_REGION: $AWS_REGION
+
+before_script:
+  - echo "Setting up Terraform..."
+  - apt-get update && apt-get install -y curl unzip
+  - curl -o terraform.zip "https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+  - unzip terraform.zip -d /usr/local/bin
+  - rm terraform.zip # Clean up after installation
+  - terraform --version
+  - apt-get install awscli -y
+  - aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+  - aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+  - aws configure set region $AWS_REGION
+
+# Initialize stage
+init:
+  stage: init
+  script:
+
+    - echo "Initializing..."
+    - terraform init -backend-config="bucket=karl-code-keeper" -backend-config="region=${TF_VAR_region}"
+    - terraform workspace select staging || terraform workspace new staging
+
+# Validate stage
+validate:
+  stage: validate
+  script:
+    - echo "Validating..."
+    - terraform init
+    - terraform workspace select staging
+    - terraform validate
+
+# Plan stage for Staging and Production
+plan_staging:
+  stage: plan
+  script:
+    - echo "Plan staging..."
+    - terraform init
+    - terraform workspace select staging
+    - terraform plan --var-file=vars/stage.tfvars
+
+# Apply to Staging with Manual Approval
+apply_staging:
+  stage: apply_staging
+  script:
+    - echo "Applying to staging..."
+    - terraform init
+    - terraform workspace select staging
+    - terraform apply -auto-approve --var-file=vars/stage.tfvars
+  environment:
+    name: staging
+  only:
+    - main
+  when: manual # Requires manual approval for staging
+
+# Apply to Production with Manual Approval
+apply_production:
+  stage: apply_production
+  script:
+    - echo "Applying to production..."
+    - terraform init
+    - terraform workspace select production || terraform workspace new production
+    - terraform apply -auto-approve --var-file=vars/prod.tfvars
+  environment:
+    name: production
+  only:
+    - main
+  when: manual # Requires manual approval for production
+  needs:
+    - apply_staging # Ensures staging is applied first

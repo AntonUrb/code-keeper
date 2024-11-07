@@ -1,0 +1,80 @@
+# must be deployed as StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-db
+spec:
+  selector:
+    app: inventory-db
+  ports:
+    - name: inventory-db
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: inventory-db
+spec:
+  serviceName: "inventory-database"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-db
+  template:
+    metadata:
+      labels:
+        app: inventory-db
+    spec:
+      containers:
+        - name: inventory-db
+          image: triangle123321/cloud-design-db:v1.0
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_NAME
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_UNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_PASSW
+          ports:
+            - containerPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - name: inventory-database
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: inventory-database
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 100Mi
+        storageClassName: gp2
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: inventory-db-vol
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gp2
+  hostPath:
+    path: /mnt/data/inventory
+  claimRef:
+    namespace: default
+    name: inventory-database-inventory-db-0

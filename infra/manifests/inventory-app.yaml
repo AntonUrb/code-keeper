@@ -1,0 +1,101 @@
+# must be deployed as a deployment | max replication: 3 min replication: 1 CPU percent trigger: 60%
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-app
+spec:
+  selector:
+    app: inventory-app
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inventory-app
+  template:
+    metadata:
+      labels:
+        app: inventory-app
+    spec:
+      restartPolicy: Always
+      initContainers:
+        - name: wait-for-invdb
+          image: busybox
+          command:
+            [
+              "sh",
+              "-c",
+              "until nc -z -w 3 inventory-db 5432; do echo waiting for inventory-db; sleep 5; done;",
+            ]
+      containers:
+        - name: inventory-app
+          image: triangle123321/cloud-design-inventory-app:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: INVENTORY_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: INVENTORY_PORT
+            - name: DB_INVENTORY_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_NAME              
+            - name: DB_INVENTORY_UNAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_UNAME
+            - name: DB_INVENTORY_PASSW
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_PASSW
+            - name: DB_INVENTORY_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_PORT
+            - name: DB_INVENTORY_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-secrets
+                  key: DB_INVENTORY_HOST
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: inventory-app
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: inventory-app
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

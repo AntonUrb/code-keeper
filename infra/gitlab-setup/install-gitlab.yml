@@ -1,0 +1,66 @@
+---
+- name: Deploy and Configure GitLab with Multiple Repositories
+  hosts: gitlab_server
+  become: true
+  vars_files:
+    - vars.yml
+    
+  tasks:
+
+    - name: Update and upgrade apt packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - curl
+          - openssh-server
+          - ca-certificates
+          - tzdata
+        state: present
+
+    - name: Add GitLab package repository
+      shell: |
+        curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ee/script.deb.sh | sudo bash
+      args:
+        executable: /bin/bash
+
+    - name: Install GitLab
+      apt:
+        name: gitlab-ee
+        state: present
+      environment:
+        EXTERNAL_URL: "{{ gitlab_external_url }}"
+      become: yes
+
+    - name: Set GitLab root password
+      shell: |
+        gitlab-rails runner "
+          user = User.find_by_username('root');
+          user.password = '{{ gitlab_root_password }}';
+          user.password_confirmation = '{{ gitlab_root_password }}';
+          user.save! "
+      when: gitlab_root_password is defined
+      become: yes
+
+    - name: Reconfigure GitLab
+      command: gitlab-ctl reconfigure
+      become: yes
+
+    - name: Install GitLab Runner
+      shell: |
+        curl -L --output /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64
+        chmod +x /usr/local/bin/gitlab-runner
+      args:
+        creates: /usr/local/bin/gitlab-runner
+      become: yes
+
+    - name: Ensure GitLab Runner user is present
+      user:
+        name: gitlab-runner
+        create_home: yes
+        shell: /bin/bash
+        state: present
+      become: yes
