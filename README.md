@@ -1,9 +1,5 @@
 # Code - Keeper
 
-## Credits
-
-Anton, Karlutska
-
 ## Prerequisites 
 
 1. Amazon account
@@ -217,3 +213,7 @@ kubectl apply -f ./manifests
 ### Can you explain the continuous deployment (CD) pipeline you've implemented for each repository?
 
 - Here we chose to use ```kubectl rollout``` feature that lets us smoothly go over to the newer version of our services. Or incase our newest udate fails, we can roll it back with the same feature that makes everything seemless by handling the restart of the containers automatically.
+
+- ## Credits
+
+Anton, Karlutska
