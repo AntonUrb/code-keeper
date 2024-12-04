@@ -1,4 +1,5 @@
 # Code - Keeper
+![Schema](./assets/code-keeper.png)
 
 ## Prerequisites 
 
